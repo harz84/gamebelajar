@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Game Tebak-tebakan</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <script src="https://unpkg.com/tone"></script>
+    <style>
+      /* Gaya CSS */
+      body {
+        font-family: 'Roboto', sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        background-color: #f0f0f0;
+        margin: 0;
+        padding: 0; /* Hilangkan padding default body */
+        width: 100%; /* Lebar 100% */
+        overflow-x: hidden;  /* Mencegah scroll horizontal */
+      }
+
+      #gameArea {
+        background-color: #fff;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        max-width: 100%; /* Lebar maksimum 100% */
+        width: 95%;
+        box-sizing: border-box; /* Pastikan padding tidak menambah lebar total */
+      }
+
+      #judulGame {
+        font-size: 36px; /* Ukuran font lebih kecil untuk mobile */
+        color: #800000;
+        margin-bottom: 15px;
+        font-weight: bold;
+      }
+
+      #petunjuk {
+        font-size: 24px; /* Ukuran font lebih kecil untuk mobile */
+        margin-bottom: 20px;
+        color: #333;
+      }
+
+      #pilihanGanda {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin-bottom: 20px;
+      }
+
+      #pilihanGanda button {
+        font-size: 24px; /* Ukuran font lebih kecil untuk mobile */
+        padding: 12px 20px;
+        margin: 8px;
+        border: none;
+        border-radius: 8px;
+        background-color: #4CAF50;
+        color: white;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+        flex: 1 1 auto;
+        min-width: 150px; /* Lebar minimum tombol */
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        box-sizing: border-box; /* Pastikan padding tidak menambah lebar total */
+      }
+
+      #pilihanGanda button:hover {
+        background-color: #45a049;
+      }
+
+      #pilihanGanda button.selected {
+        background-color: #f0ad4e;
+      }
+
+      #pilihanGanda button.salah {
+        background-color: #FF0000;
+        animation: shake 0.5s;
+      }
+      @keyframes shake {
+        0% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        50% { transform: translateX(5px); }
+        75% { transform: translateX(-5px); }
+        100% { transform: translateX(0); }
+      }
+
+      #hasil {
+        font-size: 24px; /* Ukuran font lebih kecil untuk mobile */
+        margin-top: 20px;
+        font-weight: bold;
+        color: #333;
+      }
+
+      .fireworks {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 1000;
+      }
+
+      .firework {
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background-color: #ffeb3b;
+        animation: explode 1s ease-out forwards,
+                   sparkle 0.5s 1.5s infinite;
+      }
+
+      @keyframes explode {
+        0% {
+          transform: translate(0, 0) scale(0);
+          opacity: 1;
+        }
+        100% {
+          transform: translate(var(--x), var(--y)) scale(3);
+          opacity: 0;
+        }
+      }
+
+      @keyframes sparkle {
+        0% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.2;
+        }
+        100% {
+          opacity: 1;
+        }
+      }
+
+      @media (max-width: 768px) {
+        #judulGame {
+            font-size: 30px;
+        }
+        #petunjuk {
+            font-size: 20px;
+        }
+        #pilihanGanda button {
+            font-size: 20px;
+            padding: 10px 16px;
+            min-width: 130px;
+        }
+        #hasil {
+            font-size: 20px;
+        }
+      }
+
+      @media (max-width: 600px) {
+        #pilihanGanda button {
+            flex: 1 1 100%;
+            margin: 8px 0;
+        }
+      }
+    </style>
+</head>
+<body>
+    <div id="gameArea">
+        <h1 id="judulGame"></h1>
+        <p id="petunjuk"></p>
+        <div id="pilihanGanda">
+            <button id="pilihanA"></button>
+            <button id="pilihanB"></button>
+            <button id="pilihanC"></button>
+        </div>
+        <p id="hasil"></p>
+        <div class="fireworks"></div>
+    </div>
+    <script>
+      // Data tebakan
+      const dataTebakan = [
+        {
+          deskripsi: "Hewan apa yang punya leher panjang dan makan daun?",
+          jawaban: "Jerapah",
+          pilihan: ["Jerapah", "Rusa", "Kuda"],
+          judul: "TEBAK HEWAN",
+          kategori: "hewan"
+        },
+        {
+          deskripsi: "Buah apa yang kuning dan panjang?",
+          jawaban: "Pisang",
+          pilihan: ["Pisang", "Mangga", "Lemon"],
+          judul: "TEBAK BUAH",
+          kategori: "buah"
+        },
+        {
+          deskripsi: "Hewan apa yang bisa ganti warna?",
+          jawaban: "Bunglon",
+          pilihan: ["Bunglon", "Kura-kura", "Ular"],
+          judul: "TEBAK HEWAN",
+          kategori: "hewan"
+        },
+        {
+          deskripsi: "Buah apa yang merah dan kecil?",
+          jawaban: "Stroberi",
+          pilihan: ["Stroberi", "Ceri", "Apel"],
+          judul: "TEBAK BUAH",
+          kategori: "buah"
+        },
+        {
+          deskripsi: "Hewan apa yang hidup di air dan punya sirip?",
+          jawaban: "Ikan",
+          pilihan: ["Ikan", "Kuda Laut", "Paus"],
+          judul: "TEBAK HEWAN",
+          kategori: "hewan"
+        },
+        {
+          deskripsi: "Buah apa yang besar dan bau?",
+          jawaban: "Durian",
+          pilihan: ["Durian", "Nangka", "Semangka"],
+          judul: "TEBAK BUAH",
+          kategori: "buah"
+        },
+        {
+          deskripsi: "Hewan apa yang punya belalai dan telinga besar?",
+          jawaban: "Gajah",
+          pilihan: ["Gajah", "Badak", "Singa"],
+          judul: "TEBAK HEWAN",
+          kategori: "hewan"
+        },
+        {
+          deskripsi: "Buah apa yang hijau di luar dan merah di dalam?",
+          jawaban: "Semangka",
+          pilihan: ["Semangka", "Melon", "Alpukat"],
+          judul: "TEBAK BUAH",
+          kategori: "buah"
+        },
+        {
+          deskripsi: "Hewan apa yang bisa terbang dan bikin sarang?",
+          jawaban: "Burung",
+          pilihan: ["Burung", "Kelelawar", "Capung"],
+          judul: "TEBAK HEWAN",
+          kategori: "hewan"
+        },
+        {
+          deskripsi: "Buah apa yang ungu dan kecil?",
+          jawaban: "Anggur",
+          pilihan: ["Anggur", "Blueberry", "Plum"],
+          judul: "TEBAK BUAH",
+          kategori: "buah"
+        },
+        {
+          deskripsi: "Hewan apa yang lambat dan suka di pohon?",
+          jawaban: "Kukang",
+          pilihan: ["Kukang", "Koala", "Siput"],
+          judul: "TEBAK HEWAN",
+          kategori: "hewan"
+        },
+        {
+          deskripsi: "Buah apa yang oranye dan asam?",
+          jawaban: "Jeruk",
+          pilihan: ["Jeruk", "Mangga", "Apel"],
+          judul: "TEBAK BUAH",
+          kategori: "buah"
+        },
+        {
+          deskripsi: "Hewan apa yang disebut raja hutan?",
+          jawaban: "Singa",
+          pilihan: ["Singa", "Harimau", "Serigala"],
+          judul: "TEBAK HEWAN",
+          kategori: "hewan"
+        },
+        {
+          deskripsi: "Buah apa yang cokelat di luar dan putih di dalam?",
+          jawaban: "Kelapa",
+          pilihan: ["Kelapa", "Sawo", "Kiwi"],
+          judul: "TEBAK BUAH",
+          kategori: "buah"
+        },
+        {
+          deskripsi: "Hewan apa yang lompat dan punya kantong?",
+          jawaban: "Kanguru",
+          pilihan: ["Kanguru", "Kelinci", "Kijang"],
+          judul: "TEBAK HEWAN",
+          kategori: "hewan"
+        },
+        {
+          deskripsi: "Buah apa yang merah dan kecil banget?",
+          jawaban: "Ceri",
+          pilihan: ["Ceri", "Stroberi", "Kismis"],
+          judul: "TEBAK BUAH",
+          kategori: "buah"
+        },
+        {
+          deskripsi: "Hewan apa yang punya cangkang dan jalan pelan?",
+          jawaban: "Kura-kura",
+          pilihan: ["Kura-kura", "Siput", "Keong"],
+          judul: "TEBAK HEWAN",
+          kategori: "hewan"
+        },
+        {
+          deskripsi: "Buah apa yang kuning dan rasanya asam?",
+          jawaban: "Lemon",
+          pilihan: ["Lemon", "Pisang", "Nanas"],
+          judul: "TEBAK BUAH",
+          kategori: "buah"
+        },
+        {
+          deskripsi: "Hewan apa yang suka gali tanah dan matanya kecil?",
+          jawaban: "Tikus tanah",
+          pilihan: ["Tikus tanah", "Cacing", "Semut"],
+          judul: "TEBAK HEWAN",
+          kategori: "hewan"
+        },
+        {
+          deskripsi: "Buah apa yang hijau dan lembut?",
+          jawaban: "Alpukat",
+          pilihan: ["Alpukat", "Timun", "Kiwi"],
+          judul: "TEBAK BUAH",
+          kategori: "buah"
+        },
+        {
+          deskripsi: "Hewan apa yang berenang dan punya moncong panjang?",
+          jawaban: "Ikan pedang",
+          pilihan: ["Ikan pedang", "Pesut", "Pari"],
+          judul: "TEBAK HEWAN",
+          kategori: "hewan"
+        },
+        {
+          deskripsi: "Buah apa yang merah dan bentuknya kayak hati?",
+          jawaban: "Stroberi",
+          pilihan: ["Stroberi", "Ceri", "Raspberi"],
+          judul: "TEBAK BUAH",
+          kategori: "buah"
+        },
+        {
+          deskripsi: "Hewan apa yang punya tanduk di kepala?",
+          jawaban: "Rusa",
+          pilihan: ["Rusa", "Kambing", "Sapi"],
+          judul: "TEBAK HEWAN",
+          kategori: "hewan"
+        },
+        {
+          deskripsi: "Buah apa yang kuning dan bisa jadi kismis?",
+          jawaban: "Anggur",
+          pilihan: ["Anggur", "Pisang", "Kurma"],
+          judul: "TEBAK BUAH",
+          kategori: "buah"
+        },
+        {
+          deskripsi: "Hewan apa yang kecil dan suka minum madu bunga?",
+          jawaban: "Burung kolibri",
+          pilihan: ["Burung kolibri", "Lebah", "Kupu-kupu"],
+          judul: "TEBAK HEWAN",
+          kategori: "hewan"
+        },
+        {
+          deskripsi: "Buah apa yang hijau dan manis?",
+          jawaban: "Mangga",
+          pilihan: ["Mangga", "Apel", "Pir"],
+          judul: "TEBAK BUAH",
+          kategori: "buah"
+        },
+        {
+          deskripsi: "Hewan apa yang hitam putih dan baunya bau?",
+          jawaban: "Sigung",
+          pilihan: ["Sigung", "Zebra", "Panda"],
+          judul: "TEBAK HEWAN",
+          kategori: "hewan"
+        },
+        {
+          deskripsi: "Buah apa yang cokelat dan berbulu?",
+          jawaban: "Kiwi",
+          pilihan: ["Kiwi", "Sawo", "Kelapa"],
+          judul: "TEBAK BUAH",
+          kategori: "buah"
+        },
+        {
+          deskripsi: "Hewan apa yang putih dan tinggal di tempat dingin?",
+          jawaban: "Beruang kutub",
+          pilihan: ["Beruang kutub", "Pinguin", "Anjing Laut"],
+          judul: "TEBAK HEWAN",
+          kategori: "hewan"
+        },
+        {
+          deskripsi: "Buah apa yang merah dan renyah?",
+          jawaban: "Apel",
+          pilihan: ["Apel", "Pir", "Plum"],
+          judul: "TEBAK BUAH",
+          kategori: "buah"
+        },
+        {
+          deskripsi: "Hewan apa yang punya ekor panjang dan suka naik pohon?",
+          jawaban: "Monyet",
+          pilihan: ["Monyet", "Tupai", "Kucing"],
+          judul: "TEBAK HEWAN",
+          kategori: "hewan"
+        },
+        {
+          deskripsi: "Buah apa yang hitam dan kecil?",
+          jawaban: "Blackberry",
+          pilihan: ["Blackberry", "Blueberry", "Kismis"],
+          judul: "TEBAK BUAH",
+          kategori: "buah"
+        },
+        {
+          deskripsi: "Hewan apa yang licin dan nggak punya kaki?",
+          jawaban: "Ular",
+          pilihan: ["Ular", "Cacing", "Belut"],
+          judul: "TEBAK HEWAN",
+          kategori: "hewan"
+        },
+        {
+          deskripsi: "Buah apa yang kuning dan bentuknya bintang?",
+          jawaban: "Belimbing",
+          pilihan: ["Belimbing", "Nanas", "Mangga"],
+          judul: "TEBAK BUAH",
+          kategori: "buah"
+        },
+        {
+          deskripsi: "Hewan apa yang punya paruh besar dan bisa ngomong?",
+          jawaban: "Burung beo",
+          pilihan: ["Burung beo", "Bebek", "Angsa"],
+          judul: "TEBAK HEWAN",
+          kategori: "hewan"
+        },
+        {
+          deskripsi: "Buah apa yang merah muda dan berduri?",
+          jawaban: "Buah naga",
+          pilihan: ["Buah naga", "Rambutan", "Durian"],
+          judul: "TEBAK BUAH",
+          kategori: "buah"
+        },
+        {
+          deskripsi: "Hewan apa yang hidup di laut dan punya banyak tangan?",
+          jawaban: "Gurita",
+          pilihan: ["Gurita", "Cumi-cumi", "Ubur-ubur"],
+          judul: "TEBAK HEWAN",
+          kategori: "hewan"
+        },
+        {
+          deskripsi: "Buah apa yang oranye dan kecil?",
+          jawaban: "Aprikot",
+          pilihan: ["Aprikot", "Jeruk", "Persik"],
+          judul: "TEBAK BUAH",
+          kategori: "buah"
+        },
+        {
+          deskripsi: "Hewan apa yang kecil dan suka gigit?",
+          jawaban: "Nyamuk",
+          pilihan: ["Nyamuk", "Semut", "Kutu"],
+          judul: "TEBAK HEWAN",
+          kategori: "hewan"
+        },
+        {
+          deskripsi: "Buah apa yang ungu dan bulat?",
+          jawaban: "Plum",
+          pilihan: ["Plum", "Anggur", "Blueberry"],
+          judul: "TEBAK BUAH",
+          kategori: "buah"
+        },
+      ];
+
+      let soalSaatIni;
+      let synth = new Tone.Synth().toDestination();
+      let jawabanBenar = false;
+      let kategoriSoal = "hewan"; // Mulai dengan hewan
+
+      // Fungsi untuk memainkan suara
+      function playSound(type) {
+          if (type === 'success') {
+              // Contoh 1: Menggunakan Tone.js synthesizer
+              // synth.triggerAttackRelease("C5", "8n");
+
+              // Contoh 2: Menggunakan audio file (rekomendasi)
+              const audio = new Audio('success.mp3'); // Pastikan path benar
+              audio.play();
+
+          } else if (type === 'fail') {
+              // Contoh 1: Menggunakan Tone.js synthesizer
+              // synth.triggerAttackRelease("G4", "4n");
+
+              // Contoh 2: Menggunakan audio file (rekomendasi)
+              const audio = new Audio('fail.mp3');  // Pastikan path benar
+              audio.play();
+          } else if (type === 'gameover') {
+              const audio = new Audio('gameover.wav');
+              audio.play();
+          }
+      }
+
+      function mulaiPermainan() {
+          jawabanBenar = false;
+          let soalHewan = dataTebakan.filter(soal => soal.kategori === "hewan");
+          let soalBuah = dataTebakan.filter(soal => soal.kategori === "buah");
+
+          // Pilih soal acak berdasarkan kategori
+          if (kategoriSoal === "hewan" && soalHewan.length > 0) {
+              soalSaatIni = soalHewan[Math.floor(Math.random() * soalHewan.length)];
+              kategoriSoal = "buah"; // Ganti ke buah berikutnya
+          } else if (kategoriSoal === "buah" && soalBuah.length > 0) {
+              soalSaatIni = soalBuah[Math.floor(Math.random() * soalBuah.length)];
+              kategoriSoal = "hewan"; // Ganti ke hewan berikutnya
+          } else {
+            // Jika tidak ada lagi soal di kategori tersebut, tampilkan pesan atau mulai lagi
+            document.getElementById("judulGame").textContent = "Semua pertanyaan sudah terjawab!";
+            document.getElementById("petunjuk").textContent = "Terima kasih sudah bermain!";
+            document.getElementById("pilihanGanda").innerHTML = ""; // Bersihkan pilihan
+            document.getElementById("hasil").textContent = "";
+            return;
+          }
+
+        // Tampilkan judul
+        document.getElementById("judulGame").textContent = soalSaatIni.judul;
+
+        // Tampilkan petunjuk
+        document.getElementById("petunjuk").textContent = soalSaatIni.deskripsi;
+
+        // Tampilkan pilihan ganda
+        const pilihanButtons = ["pilihanA", "pilihanB", "pilihanC"];
+        //acak pilihan
+        const shuffledPilihan = [...soalSaatIni.pilihan];
+        for (let i = shuffledPilihan.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffledPilihan[i], shuffledPilihan[j]] = [shuffledPilihan[j], shuffledPilihan[i]];
+        }
+
+        for (let i = 0; i < pilihanButtons.length; i++) {
+          const button = document.getElementById(pilihanButtons[i]);
+          button.textContent = shuffledPilihan[i];
+          button.onclick = function() {
+            if (!jawabanBenar) { // Hanya cek jika belum benar
+                cekJawaban(shuffledPilihan[i], button);
+            }
+          };
+        }
+
+        // Reset hasil
+        document.getElementById("hasil").textContent = "";
+        resetPilihan(); //pastikan pilihan tidak selected
+      }
+
+      function cekJawaban(jawabanYangDipilih, buttonElement) {
+          if (jawabanYangDipilih === soalSaatIni.jawaban) {
+            document.getElementById("hasil").textContent = "Benar!";
+            triggerFireworks();
+            playSound('success'); // Panggil fungsi playSound dengan 'success'
+            jawabanBenar = true; // Set jawabanBenar ke true
+            setTimeout(mulaiPermainan, 2000);
+          } else {
+            document.getElementById("hasil").textContent = "Salah, coba lagi!";
+            playSound('gameover'); // Panggil fungsi playSound dengan 'gameover'
+            // Tambahkan kelas untuk mengubah warna tombol
+            buttonElement.classList.add("salah");
+            buttonElement.style.animationPlayState = 'running';
+
+
+            setTimeout(() => {
+                // Hapus kelas setelah beberapa saat
+                buttonElement.classList.remove("salah");
+                buttonElement.style.animationPlayState = 'paused';
+            }, 500); // Kembalikan ke warna semula setelah 0.5 detik
+          }
+      }
+
+      function resetPilihan() {
+        const pilihanButtons = ["pilihanA", "pilihanB", "pilihanC"];
+        pilihanButtons.forEach(buttonId => {
+          const button = document.getElementById(buttonId);
+          button.classList.remove("selected");
+          button.classList.remove("salah"); // Pastikan kelas salah juga dihapus
+          button.style.animationPlayState = 'paused';
+        });
+      }
+
+      function triggerFireworks() {
+        const container = document.querySelector(".fireworks");
+        const count = 20; // Jumlah kembang api
+
+        for (let i = 0; i < count; i++) {
+          const firework = document.createElement("div");
+          firework.classList.add("firework");
+          const x = Math.random() * window.innerWidth - 100;
+          const y = Math.random() * window.innerHeight - 100;
+          const dx = Math.random() * 200 - 100;
+          const dy = Math.random() * 200 - 100;
+
+          firework.style.setProperty("--x", `${dx}px`);
+          firework.style.setProperty("--y", `${dy}px`);
+          firework.style.left = `${x}px`;
+          firework.style.top = `${y}px`;
+
+          container.appendChild(firework);
+        }
+
+        setTimeout(() => {
+          container.innerHTML = ""; // Bersihkan kembang api setelah animasi selesai
+        }, 2000); // Durasi animasi kembang api
+      }
+
+
+
+      // Mulai permainan saat halaman dimuat
+      mulaiPermainan();
+    </script>
+</body>
+</html>
