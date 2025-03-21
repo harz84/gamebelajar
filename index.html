@@ -184,6 +184,48 @@
       #skorSalah {
         color: #FF0000; /* Merah terang/merah darah */
       }
+      #resumeGame {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.8);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        font-size: 24px;
+        z-index: 1001;
+        display: none;
+      }
+
+      #resumeGame h2 {
+        font-size: 36px;
+        margin-bottom: 20px;
+      }
+
+      #resumeGame p {
+        margin-bottom: 10px;
+      }
+
+      #restartButton {
+        padding: 12px 24px;
+        font-size: 20px;
+        background-color: #007BFF;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+        margin-top: 20px;
+      }
+
+      #restartButton:hover {
+        background-color: #0056b3;
+      }
+
     </style>
 </head>
 <body>
@@ -200,6 +242,12 @@
         <div id="skor">
             Benar: <span id="skorBenar">0</span> / Salah: <span id="skorSalah">0</span>
         </div>
+         <div id="resumeGame">
+              <h2>Resume Permainan</h2>
+              <p>Benar: <span id="resumeBenar">0</span></p>
+              <p>Salah: <span id="resumeSalah">0</span></p>
+              <button id="restartButton">Mulai Lagi</button>
+          </div>
     </div>
     <script>
       // Data tebakan
@@ -493,6 +541,7 @@
       let skorBenar = 0;
       let skorSalah = 0;
       let soalSudahDitampilkan = new Set();
+      let jumlahSoal = 0;
 
       // Fungsi untuk memainkan suara
       function playSound(type) {
@@ -510,6 +559,13 @@
       }
 
       function mulaiPermainan() {
+          soalSudahDitampilkan.clear();
+          jumlahSoal = 0;
+          skorBenar = 0;
+          skorSalah = 0;
+          document.getElementById("skorBenar").textContent = skorBenar;
+          document.getElementById("skorSalah").textContent = skorSalah;
+          document.getElementById("resumeGame").style.display = "none";
           jawabanBenar = false;
           let soalHewan = dataTebakan.filter(soal => soal.kategori === "hewan");
           let soalBuah = dataTebakan.filter(soal => soal.kategori === "buah");
@@ -568,6 +624,7 @@
       }
 
       function cekJawaban(jawabanYangDipilih, buttonElement) {
+          jumlahSoal++;
           if (jawabanYangDipilih === soalSaatIni.jawaban) {
               document.getElementById("hasil").textContent = "Benar!";
               triggerFireworks();
@@ -575,7 +632,13 @@
               jawabanBenar = true;
               skorBenar++;
               document.getElementById("skorBenar").textContent = skorBenar;
-              setTimeout(mulaiPermainan, 2000);
+              setTimeout(() => {
+                if(jumlahSoal < 10){
+                    mulaiPermainan();
+                 } else {
+                    tampilkanResume();
+                 }
+              }, 2000);
           } else {
               document.getElementById("hasil").textContent = "Salah, coba lagi!";
               playSound('gameover');
@@ -583,52 +646,12 @@
               buttonElement.style.animationPlayState = 'running';
               skorSalah++;
               document.getElementById("skorSalah").textContent = skorSalah;
-
               setTimeout(() => {
-                  buttonElement.classList.remove("salah");
-                  buttonElement.style.animationPlayState = 'paused';
+                if(jumlahSoal < 10){
+                     mulaiPermainan();
+                } else {
+                    tampilkanResume();
+                }
               }, 500);
           }
-           kategoriSoal = kategoriSoal === "hewan" ? "buah" : "hewan";
-      }
-
-      function resetPilihan() {
-          const pilihanButtons = ["pilihanA", "pilihanB", "pilihanC"];
-          pilihanButtons.forEach(buttonId => {
-              const button = document.getElementById(buttonId);
-              button.classList.remove("selected");
-              button.classList.remove("salah");
-              button.style.animationPlayState = 'paused';
-          });
-      }
-
-      function triggerFireworks() {
-        const container = document.querySelector(".fireworks");
-        const count = 20;
-
-        for (let i = 0; i < count; i++) {
-          const firework = document.createElement("div");
-          firework.classList.add("firework");
-          const x = Math.random() * window.innerWidth - 100;
-          const y = Math.random() * window.innerHeight - 100;
-          const dx = Math.random() * 200 - 100;
-          const dy = Math.random() * 200 - 100;
-
-          firework.style.setProperty("--x", `${dx}px`);
-          firework.style.setProperty("--y", `${dy}px`);
-          firework.style.left = `${x}px`;
-          firework.style.top = `${y}px`;
-
-          container.appendChild(firework);
-        }
-
-        setTimeout(() => {
-          container.innerHTML = "";
-        }, 2000);
-      }
-
-      // Mulai permainan saat halaman dimuat
-      mulaiPermainan();
-    </script>
-</body>
-</html>
+           kategoriSoal = kategoriSoal === "hewan" ? "buah" : "he
