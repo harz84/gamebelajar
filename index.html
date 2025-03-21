@@ -17,9 +17,9 @@
         min-height: 100vh;
         background-color: #f0f0f0;
         margin: 0;
-        padding: 0; /* Hilangkan padding default body */
-        width: 100%; /* Lebar 100% */
-        overflow-x: hidden;  /* Mencegah scroll horizontal */
+        padding: 0;
+        width: 100%;
+        overflow-x: hidden;
       }
 
       #gameArea {
@@ -28,20 +28,28 @@
         padding: 20px;
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         text-align: center;
-        max-width: 100%; /* Lebar maksimum 100% */
+        max-width: 100%;
         width: 95%;
-        box-sizing: border-box; /* Pastikan padding tidak menambah lebar total */
+        box-sizing: border-box;
+        position: relative; /* Untuk positioning skor */
       }
 
       #judulGame {
-        font-size: 36px; /* Ukuran font lebih kecil untuk mobile */
+        font-size: 36px;
         color: #800000;
         margin-bottom: 15px;
         font-weight: bold;
       }
+      #judulGame.hewan {
+        color: #800000; /* Merah marun untuk hewan */
+      }
+
+      #judulGame.buah {
+        color: #003366; /* Biru tua untuk buah */
+      }
 
       #petunjuk {
-        font-size: 24px; /* Ukuran font lebih kecil untuk mobile */
+        font-size: 24px;
         margin-bottom: 20px;
         color: #333;
       }
@@ -54,7 +62,7 @@
       }
 
       #pilihanGanda button {
-        font-size: 24px; /* Ukuran font lebih kecil untuk mobile */
+        font-size: 24px;
         padding: 12px 20px;
         margin: 8px;
         border: none;
@@ -64,9 +72,9 @@
         cursor: pointer;
         transition: background-color 0.3s ease;
         flex: 1 1 auto;
-        min-width: 150px; /* Lebar minimum tombol */
+        min-width: 150px;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        box-sizing: border-box; /* Pastikan padding tidak menambah lebar total */
+        box-sizing: border-box;
       }
 
       #pilihanGanda button:hover {
@@ -90,7 +98,7 @@
       }
 
       #hasil {
-        font-size: 24px; /* Ukuran font lebih kecil untuk mobile */
+        font-size: 24px;
         margin-top: 20px;
         font-weight: bold;
         color: #333;
@@ -162,6 +170,20 @@
             margin: 8px 0;
         }
       }
+      #skor {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        font-size: 20px;
+        font-weight: bold;
+        color: #333;
+      }
+      #skorBenar {
+        color: #00FF00; /* Hijau terang */
+      }
+      #skorSalah {
+        color: #FF0000; /* Merah terang/merah darah */
+      }
     </style>
 </head>
 <body>
@@ -175,6 +197,9 @@
         </div>
         <p id="hasil"></p>
         <div class="fireworks"></div>
+        <div id="skor">
+            Benar: <span id="skorBenar">0</span> / Salah: <span id="skorSalah">0</span>
+        </div>
     </div>
     <script>
       // Data tebakan
@@ -464,24 +489,19 @@
       let soalSaatIni;
       let synth = new Tone.Synth().toDestination();
       let jawabanBenar = false;
-      let kategoriSoal = "hewan"; // Mulai dengan hewan
+      let kategoriSoal = "hewan";
+      let skorBenar = 0;
+      let skorSalah = 0;
+      let soalSudahDitampilkan = new Set();
 
       // Fungsi untuk memainkan suara
       function playSound(type) {
           if (type === 'success') {
-              // Contoh 1: Menggunakan Tone.js synthesizer
-              // synth.triggerAttackRelease("C5", "8n");
-
-              // Contoh 2: Menggunakan audio file (rekomendasi)
-              const audio = new Audio('success.mp3'); // Pastikan path benar
+              const audio = new Audio('success.mp3');
               audio.play();
 
           } else if (type === 'fail') {
-              // Contoh 1: Menggunakan Tone.js synthesizer
-              // synth.triggerAttackRelease("G4", "4n");
-
-              // Contoh 2: Menggunakan audio file (rekomendasi)
-              const audio = new Audio('fail.mp3');  // Pastikan path benar
+              const audio = new Audio('fail.mp3');
               audio.play();
           } else if (type === 'gameover') {
               const audio = new Audio('gameover.wav');
@@ -493,89 +513,98 @@
           jawabanBenar = false;
           let soalHewan = dataTebakan.filter(soal => soal.kategori === "hewan");
           let soalBuah = dataTebakan.filter(soal => soal.kategori === "buah");
+          let soalYangMungkin;
 
-          // Pilih soal acak berdasarkan kategori
-          if (kategoriSoal === "hewan" && soalHewan.length > 0) {
-              soalSaatIni = soalHewan[Math.floor(Math.random() * soalHewan.length)];
-              kategoriSoal = "buah"; // Ganti ke buah berikutnya
-          } else if (kategoriSoal === "buah" && soalBuah.length > 0) {
-              soalSaatIni = soalBuah[Math.floor(Math.random() * soalBuah.length)];
-              kategoriSoal = "hewan"; // Ganti ke hewan berikutnya
-          } else {
-            // Jika tidak ada lagi soal di kategori tersebut, tampilkan pesan atau mulai lagi
+        if (kategoriSoal === "hewan") {
+            soalYangMungkin = soalHewan;
+        } else {
+            soalYangMungkin = soalBuah;
+        }
+
+
+          if (soalYangMungkin.length === 0) {
             document.getElementById("judulGame").textContent = "Semua pertanyaan sudah terjawab!";
             document.getElementById("petunjuk").textContent = "Terima kasih sudah bermain!";
-            document.getElementById("pilihanGanda").innerHTML = ""; // Bersihkan pilihan
+            document.getElementById("pilihanGanda").innerHTML = "";
             document.getElementById("hasil").textContent = "";
-            return;
+             return;
+          }
+        let soalBaru;
+        do {
+            soalBaru = soalYangMungkin[Math.floor(Math.random() * soalYangMungkin.length)];
+        } while (soalSudahDitampilkan.has(soalBaru));
+
+        soalSaatIni = soalBaru;
+        soalSudahDitampilkan.add(soalSaatIni);
+
+          // Tampilkan judul
+          document.getElementById("judulGame").textContent = soalSaatIni.judul;
+          document.getElementById("judulGame").className = soalSaatIni.kategori;
+
+          // Tampilkan petunjuk
+          document.getElementById("petunjuk").textContent = soalSaatIni.deskripsi;
+
+          // Tampilkan pilihan ganda
+          const pilihanButtons = ["pilihanA", "pilihanB", "pilihanC"];
+          const shuffledPilihan = [...soalSaatIni.pilihan];
+          for (let i = shuffledPilihan.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [shuffledPilihan[i], shuffledPilihan[j]] = [shuffledPilihan[j], shuffledPilihan[i]];
           }
 
-        // Tampilkan judul
-        document.getElementById("judulGame").textContent = soalSaatIni.judul;
+          for (let i = 0; i < pilihanButtons.length; i++) {
+              const button = document.getElementById(pilihanButtons[i]);
+              button.textContent = shuffledPilihan[i];
+              button.onclick = function() {
+                  if (!jawabanBenar) {
+                      cekJawaban(shuffledPilihan[i], button);
+                  }
+              };
+          }
 
-        // Tampilkan petunjuk
-        document.getElementById("petunjuk").textContent = soalSaatIni.deskripsi;
-
-        // Tampilkan pilihan ganda
-        const pilihanButtons = ["pilihanA", "pilihanB", "pilihanC"];
-        //acak pilihan
-        const shuffledPilihan = [...soalSaatIni.pilihan];
-        for (let i = shuffledPilihan.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [shuffledPilihan[i], shuffledPilihan[j]] = [shuffledPilihan[j], shuffledPilihan[i]];
-        }
-
-        for (let i = 0; i < pilihanButtons.length; i++) {
-          const button = document.getElementById(pilihanButtons[i]);
-          button.textContent = shuffledPilihan[i];
-          button.onclick = function() {
-            if (!jawabanBenar) { // Hanya cek jika belum benar
-                cekJawaban(shuffledPilihan[i], button);
-            }
-          };
-        }
-
-        // Reset hasil
-        document.getElementById("hasil").textContent = "";
-        resetPilihan(); //pastikan pilihan tidak selected
+          // Reset hasil
+          document.getElementById("hasil").textContent = "";
+          resetPilihan();
       }
 
       function cekJawaban(jawabanYangDipilih, buttonElement) {
           if (jawabanYangDipilih === soalSaatIni.jawaban) {
-            document.getElementById("hasil").textContent = "Benar!";
-            triggerFireworks();
-            playSound('success'); // Panggil fungsi playSound dengan 'success'
-            jawabanBenar = true; // Set jawabanBenar ke true
-            setTimeout(mulaiPermainan, 2000);
+              document.getElementById("hasil").textContent = "Benar!";
+              triggerFireworks();
+              playSound('success');
+              jawabanBenar = true;
+              skorBenar++;
+              document.getElementById("skorBenar").textContent = skorBenar;
+              setTimeout(mulaiPermainan, 2000);
           } else {
-            document.getElementById("hasil").textContent = "Salah, coba lagi!";
-            playSound('gameover'); // Panggil fungsi playSound dengan 'gameover'
-            // Tambahkan kelas untuk mengubah warna tombol
-            buttonElement.classList.add("salah");
-            buttonElement.style.animationPlayState = 'running';
+              document.getElementById("hasil").textContent = "Salah, coba lagi!";
+              playSound('gameover');
+              buttonElement.classList.add("salah");
+              buttonElement.style.animationPlayState = 'running';
+              skorSalah++;
+              document.getElementById("skorSalah").textContent = skorSalah;
 
-
-            setTimeout(() => {
-                // Hapus kelas setelah beberapa saat
-                buttonElement.classList.remove("salah");
-                buttonElement.style.animationPlayState = 'paused';
-            }, 500); // Kembalikan ke warna semula setelah 0.5 detik
+              setTimeout(() => {
+                  buttonElement.classList.remove("salah");
+                  buttonElement.style.animationPlayState = 'paused';
+              }, 500);
           }
+           kategoriSoal = kategoriSoal === "hewan" ? "buah" : "hewan";
       }
 
       function resetPilihan() {
-        const pilihanButtons = ["pilihanA", "pilihanB", "pilihanC"];
-        pilihanButtons.forEach(buttonId => {
-          const button = document.getElementById(buttonId);
-          button.classList.remove("selected");
-          button.classList.remove("salah"); // Pastikan kelas salah juga dihapus
-          button.style.animationPlayState = 'paused';
-        });
+          const pilihanButtons = ["pilihanA", "pilihanB", "pilihanC"];
+          pilihanButtons.forEach(buttonId => {
+              const button = document.getElementById(buttonId);
+              button.classList.remove("selected");
+              button.classList.remove("salah");
+              button.style.animationPlayState = 'paused';
+          });
       }
 
       function triggerFireworks() {
         const container = document.querySelector(".fireworks");
-        const count = 20; // Jumlah kembang api
+        const count = 20;
 
         for (let i = 0; i < count; i++) {
           const firework = document.createElement("div");
@@ -594,11 +623,9 @@
         }
 
         setTimeout(() => {
-          container.innerHTML = ""; // Bersihkan kembang api setelah animasi selesai
-        }, 2000); // Durasi animasi kembang api
+          container.innerHTML = "";
+        }, 2000);
       }
-
-
 
       // Mulai permainan saat halaman dimuat
       mulaiPermainan();
